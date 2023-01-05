@@ -7,38 +7,46 @@ import sys
 
 
 def check_fzf():
-    result = subprocess.run(["which", "fzf"], stdout=subprocess.PIPE)
-    if result.stdout:
-        pass
-    else:
-        user_choice = input("[!] This program needs fzf install? Y/N ")
-        if user_choice.lower() == "y":
-            subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth",
-                    "1",
-                    "https://github.com/junegunn/fzf.git",
-                    "~/.fzf",
-                ]
-            )
-            subprocess.run(["~/.fzf/install"])
-            subprocess.run(["clear"])
-        if user_choice.lower() == "n":
-            exit()
+    try:
+       result = subprocess.run(["which", "fzf"], stdout=subprocess.PIPE)
+       if result.stdout:
+         pass
+       else:
+           user_choice = input("[!] This program needs fzf install? Y/N ")
+           if user_choice.lower() == "y":
+               subprocess.run(
+                       [
+                           "git",
+                           "clone",
+                           "--depth",
+                           "1",
+                           "https://github.com/junegunn/fzf.git",
+                           "~/.fzf",
+                       ]
+                       )
+               subprocess.run(["~/.fzf/install"])
+               subprocess.run(["clear"])
+               if user_choice.lower() == "n":
+                   exit()
 
+    except KeyboardInterrupt:
+        exit()
 
 check_fzf()
 
 from pyfzf.pyfzf import FzfPrompt
 
 def install(packages):
-    update_choice = input("[!] Update the needed packages? Y/N ")
-    if update_choice.lower() == "y":
-       subprocess.run(["pip", "install"] + packages)
-    if update_choice.lower() == "n":
-       subprocess.run(["clear"])
+    try:
+        update_choice = input("[!] Update the needed packages? Y/N ")
+        if update_choice.lower() == "y":
+            subprocess.run(["pip", "install"] + packages)
+            subprocess.run(["clear"])
+            if update_choice.lower() == "n":
+                subprocess.run(["clear"])
+
+    except KeyboardInterrupt:
+        exit()
 
 install(["requests", "BeautifulSoup4"])
 
@@ -179,3 +187,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
