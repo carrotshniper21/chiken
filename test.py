@@ -48,7 +48,7 @@ def install(packages):
     except KeyboardInterrupt:
         exit()
 
-install(["requests", "BeautifulSoup4"])
+install(["requests"])
 
 def choose_best_quality(qualities):
     ordered_qualities = ["1080", "720", "480", "360", "240", "auto"]
