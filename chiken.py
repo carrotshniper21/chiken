@@ -3,9 +3,86 @@ import requests
 import json
 import sys
 import os
-from utils import util
 from pyfzf.pyfzf import FzfPrompt
-from utils.arg_handler import parse_args
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Watch movies or anime from api.consumet.org."
+    )
+
+    parser.add_argument(
+        "-q",
+        "--quality",
+        action="store",
+        required=False,
+        default="auto",
+    )
+    parser.add_argument(
+        "-H",
+        "--history",
+        required=False,
+        dest="history",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-d",
+        "--download",
+        required=False,
+        dest="download",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-u",
+        "--update",
+        required=False,
+        dest="update",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-C",
+        "--continue",
+        required=False,
+        dest="continue",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        required=False,
+        dest="config",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-v",
+        "--vlc",
+        required=False,
+        dest="vlc",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-s",
+        "--sources",
+        required=False,
+        dest="sources",
+        action="store_true",
+    )
+
+    return parser.parse_args()
+
+colorcodes = {
+    "Black": "\033[30m",
+    "Red": "\033[31m",
+    "Green": "\033[32m",
+    "Yellow": "\033[33m",
+    "Blue": "\033[34m",
+    "Magenta": "\033[35m",
+    "Cyan": "\033[36m",
+    "White": "\033[37m",
+    "Reset": "\033[0m",
+    "Bold": "\033[1m",
+    "Gray": "\033[90m",
+}
 
 def choose_best_quality(qualities):
     ordered_qualities = ["1080", "720", "480", "360", "240", "auto"]
@@ -38,14 +115,14 @@ class MovieClient:
 
     def search_movies(self):
         try:
-            print(util.colorcodes["Gray"] + "[*] This script is still in development so there will be some bugs!\nif you find any report them to: https://github.com/carrotshniper21/chiken" + util.colorcodes["Reset"])
-            print(util.colorcodes["Yellow"] + "[*] INFO: " + util.colorcodes["Reset"] + "Fetching api.consumet.org\n")
+            print(colorcodes["Gray"] + "[*] This script is still in development so there will be some bugs!\nif you find any report them to: https://github.com/carrotshniper21/chiken" + colorcodes["Reset"])
+            print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + "Fetching api.consumet.org\n")
             query = input("[+] Enter a show name: ")
             if query == "quit":
                 sys.exit()
             json_data = self.get_json_data(query)
             if len(json_data["results"]) == 0:
-                print(util.colorcodes["Red"] + "[X] ERROR: " + util.colorcodes["Reset"] + "No results found")
+                print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] + "No results found")
                 sys.exit()
 
             strings = [
@@ -80,7 +157,7 @@ class MovieClient:
                 input(f"[+] Please enter an episode 1-{number_of_episodes}: ")
             )
         except ValueError:
-            print(util.colorcodes["Red"] + "[X] ERROR: " + util.colorcodes["Reset"] + "Invalid Input. Try Again")
+            print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] + "Invalid Input. Try Again")
             sys.exit()
 
         episode_found = False
@@ -94,7 +171,7 @@ class MovieClient:
                 break
 
         if not episode_found:
-            print(util.colorcodes["Red"] + "[X] ERROR: " + util.colorcodes["Reset"] +  f"Episode {episode_number} not found.")
+            print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] +  f"Episode {episode_number} not found.")
         else:
             h = requests.get(
                 f"{self.BASE_URL}watch?episodeId={episode['id']}&mediaId={id}&server=vidcloud&"
@@ -107,8 +184,8 @@ class MovieClient:
                 f'{k["url"]} {k["quality"]}' for k in show_episodes["sources"]
             ]
             if args.sources:
-                 print(util.colorcodes["Yellow"] + "[*] SOURCES " + util.colorcodes["Reset"] + f"{episode['title']}:\n" + util.colorcodes["Blue"] + "\n".join(selected_episode) + util.colorcodes["Reset"])
-                 print(util.colorcodes["Yellow"] + "[*] SUBTITLES " + util.colorcodes["Reset"] + f"{episode['title']}:\n" + util.colorcodes["Blue"] + "\n".join(subtitles) + util.colorcodes["Reset"])
+                 print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + f"{episode['title']}:\n" + colorcodes["Blue"] + "\n".join(selected_episode) + colorcodes["Reset"])
+                 print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + f"{episode['title']}:\n" + colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
             sources = show_episodes["sources"]
             qualities = [source["quality"] for source in sources]
             best_quality = choose_best_quality(qualities)
@@ -123,18 +200,18 @@ class MovieClient:
 
             if args.download:
                  download_arg = requests.get(best_link)
-                 download_dir = input(util.colorcodes["Gray"] + "[*] Enter a directory to save to: " + util.colorcodes["Reset"])
+                 download_dir = input(colorcodes["Gray"] + "[*] Enter a directory to save to: " + colorcodes["Reset"])
                  if not os.path.exists(download_dir):
-                     print(util.colorcodes["Red"] + "[X] ERROR: " + util.colorcodes["Reset"] + "Directory doesn't exist. Exiting.")
+                     print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] + "Directory doesn't exist. Exiting.")
 
                  file_path = os.path.join(download_dir, "pp.m3u8")
                  with open(file_path, "w") as f:
                      f.write(download_arg.text)
-                     print(util.colorcodes["Yellow"] + "[*] INFO: " + util.colorcodes["Reset"] + util.colorcodes["Bold"] + f"File Written: {episode['title']}" + util.colorcodes["Reset"])
+                     print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + f"File Written: {episode['title']}" + colorcodes["Reset"])
                      sys.exit()
             print(["mpv", f"{best_link}", f"--title={episode['title']}", f"{subtitle_load}"])
 
-            print(util.colorcodes["Green"] + "[*] SUCCESS: " + util.colorcodes["Reset"] + f"Now Playing '{episode['title']}'")
+            print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + f"Now Playing '{episode['title']}'")
             print("[+] Press Ctrl+C to exit the program")
             tv_result = subprocess.run(
                 ["mpv", f"{best_link}", f"--title={episode['title']}", f"{subtitle_load}"],
