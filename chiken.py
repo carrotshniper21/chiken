@@ -99,6 +99,17 @@ class MovieClient:
         self.fzf = FzfPrompt()
         self.BASE_URL = "https://api.consumet.org/movies/flixhq/"
 
+    def load_config(self):
+        config_path = os.path.join(os.path.expanduser('~'), '.config', 'chiken/' 'config.txt')
+        with open(config_path) as config_file:
+            config_data = config_file.read()
+            lines = config_data.split('\n')
+            preferred_server = next(line.split('=')[1] for line in lines if line.startswith('preferred_server='))
+            video_quality = next(line.split('=')[1] for line in lines if line.startswith('video_quality='))
+            subs_langauge = next(line.split('=')[1] for line in lines if line.startswith('subs_language='))
+            player = next(line.split('=')[1] for line in lines if line.startswith('player='))
+            return player, subs_langauge, video_quality, preferred_server
+
     def get_json_data(self, name):
         r = requests.get(f"{self.BASE_URL}{name}")
         return json.loads(r.text)
@@ -107,12 +118,12 @@ class MovieClient:
         parts = s.split("-")
         return int(parts[-1])
 
-    def watch_movie(self, id, name, args):
+    def watch_movie(self, id, name, args, preferred_server):
         number = self.get_number_after_last_dash(id)
         if args.sources:
             print(colorcodes["Yellow"] + "[*] INFO " +  colorcodes["Reset"] + colorcodes["Bold"] + "Fetching Url:\n" + colorcodes["Reset"]  + colorcodes["Blue"] + f"{self.BASE_URL}watch?episodeId={number}&mediaId={id}&server=vidcloud&" + colorcodes["Reset"])
         p = requests.get(
-            f"{self.BASE_URL}watch?episodeId={number}&mediaId={id}&server=vidcloud&"
+            f"{self.BASE_URL}watch?episodeId={number}&mediaId={id}&server={preferred_server}&"
         )
         return json.loads(p.text)
 
@@ -227,11 +238,12 @@ def main():
     try:
         args = parse_args()
         movie_client = MovieClient()
+        player, subs_langauge, video_quality, preferred_server = movie_client.load_config()
         id, name = movie_client.search_movies(args)
         if id.startswith("tv/"):
             movie_client.search_tv_shows(id, args)
         elif id.startswith("movie/"):
-            result = movie_client.watch_movie(id, name, args)
+            result = movie_client.watch_movie(id, name, args, preferred_server)
             media_link = [f'{p["url"]} {p["quality"]}' for p in result["sources"]]
             subtitles = [f'{z["url"]} {z["lang"]}' for z in result["subtitles"]]
             if args.sources:
@@ -255,3 +267,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
