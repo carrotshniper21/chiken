@@ -1,14 +1,14 @@
 import subprocess
-import requests
+import argparse
 import json
 import sys
 import os
 from pyfzf.pyfzf import FzfPrompt
-import argparse
+import requests
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Watch movies or anime from api.consumet.org."
+        description="Watch movies or anime from api.consumet.org"
     )
 
     parser.add_argument(
@@ -106,31 +106,35 @@ class MovieClient:
         parts = s.split("-")
         return int(parts[-1])
 
-    def watch_movie(self, id, name):
+    def watch_movie(self, id, name, args):
         number = self.get_number_after_last_dash(id)
+        if args.sources:
+            print(colorcodes["Yellow"] + "[*] INFO " +  colorcodes["Reset"] + colorcodes["Bold"] + "Fetching Url:\n" + colorcodes["Reset"]  + colorcodes["Blue"] + f"{self.BASE_URL}watch?episodeId={number}&mediaId={id}&server=vidcloud&" + colorcodes["Reset"])
         p = requests.get(
             f"{self.BASE_URL}watch?episodeId={number}&mediaId={id}&server=vidcloud&"
         )
         return json.loads(p.text)
 
-    def search_movies(self):
+    def search_movies(self, args):
         try:
             print(colorcodes["Gray"] + "[*] This script is still in development so there will be some bugs!\nif you find any report them to: https://github.com/carrotshniper21/chiken" + colorcodes["Reset"])
-            print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + "Fetching api.consumet.org\n")
+            if args.sources:
+                print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Fetching api.consumet.org" + colorcodes["Reset"])
             query = input("[+] Enter a show name: ")
-            if query == "quit":
-                sys.exit()
             json_data = self.get_json_data(query)
             if len(json_data["results"]) == 0:
                 print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] + "No results found")
                 sys.exit()
-
             strings = [
                 f'{e["id"]}\t{e["title"]} ({e["type"]})' for e in json_data["results"]
             ]
+            if args.sources:
+                print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Formatting Data:\n" + colorcodes["Reset"])
+                print(colorcodes["Blue"] +  json.dumps(json_data, indent=4, separators=(". ", " = ")) + colorcodes["Reset"])
             output = self.fzf.prompt(strings, "--border -1 --reverse --with-nth 2..")
             [id, name] = output[0].split("\t")
-        except IndexError:
+        except IndexError as e:
+            print(colorcodes["Red"] + "[X] ERROR: " + colorcodes["Reset"] + f"An error occured: {e}\n")
             sys.exit()
 
         return id, name
@@ -184,8 +188,8 @@ class MovieClient:
                 f'{k["url"]} {k["quality"]}' for k in show_episodes["sources"]
             ]
             if args.sources:
-                 print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + f"{episode['title']}:\n" + colorcodes["Blue"] + "\n".join(selected_episode) + colorcodes["Reset"])
-                 print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + f"{episode['title']}:\n" + colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
+                 print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{episode['title']}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(selected_episode) + colorcodes["Reset"])
+                 print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + colorcodes["Bold"] +  f"{episode['title']}:\n" + colorcodes["Reset"] +  colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
             sources = show_episodes["sources"]
             qualities = [source["quality"] for source in sources]
             best_quality = choose_best_quality(qualities)
@@ -209,8 +213,6 @@ class MovieClient:
                      f.write(download_arg.text)
                      print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + f"File Written: {episode['title']}" + colorcodes["Reset"])
                      sys.exit()
-            print(["mpv", f"{best_link}", f"--title={episode['title']}", f"{subtitle_load}"])
-
             print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + f"Now Playing '{episode['title']}'")
             print("[+] Press Ctrl+C to exit the program")
             tv_result = subprocess.run(
@@ -224,16 +226,16 @@ def main():
     try:
         args = parse_args()
         movie_client = MovieClient()
-        id, name = movie_client.search_movies()
+        id, name = movie_client.search_movies(args)
         if id.startswith("tv/"):
             movie_client.search_tv_shows(id, args)
         elif id.startswith("movie/"):
-            result = movie_client.watch_movie(id, name)
+            result = movie_client.watch_movie(id, name, args)
             media_link = [f'{p["url"]} {p["quality"]}' for p in result["sources"]]
             subtitles = [f'{z["url"]} {z["lang"]}' for z in result["subtitles"]]
             if args.sources:
-                print(util.colorcodes["Yellow"] + "[*] SOURCES " + util.colorcodes["Reset"] + f"{name}:\n" + util.colorcodes["Blue"] + "\n".join(media_link) + util.colorcodes["Reset"])
-                print(util.colorcodes["Yellow"] + "[*] SUBTITLES " + util.colorcodes["Reset"] + f"{name}:\n" + util.colorcodes["Blue"] + "\n".join(subtitles) + util.colorcodes["Reset"])
+                print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{name}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(media_link) + colorcodes["Reset"])
+                print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{name}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
             qualities = [p["quality"] for p in result["sources"]]
             best_quality = choose_best_quality(qualities)
 
@@ -247,7 +249,7 @@ def main():
                     stderr=subprocess.DEVNULL,
                 )
     except KeyboardInterrupt:
-        exit()
+        sys.exit()
 
 
 if __name__ == "__main__":
