@@ -99,6 +99,11 @@ class MovieClient:
         self.fzf = FzfPrompt()
         self.BASE_URL = "https://api.consumet.org/movies/flixhq/"
 
+    def update(self, args):
+        if args.update:
+            update = subprocess.run(['git', 'stash'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+             = subprocess.run(["git", "pull", "https://github.com/carrotshniper21/chiken"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)      
+        
     def load_config(self):
         config_path = os.path.join(os.path.expanduser('~'), '.config', 'chiken/' 'config.txt')
         with open(config_path) as config_file:
@@ -249,12 +254,16 @@ def main():
             if args.sources:
                 print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{name}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(media_link) + colorcodes["Reset"])
                 print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{name}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
+            if args.update:
+                movie_client.update(args)
+                print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + "Update Successful\n")
             qualities = [p["quality"] for p in result["sources"]]
             best_quality = choose_best_quality(qualities)
 
         for link in media_link:
             if best_quality in link:
                 link = link.split()[0]
+                print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + f"Now Playing '{name.rsplit(' ', 1)[0]}'")
                 print("[+] Press Ctrl+C to exit the program")
                 result = subprocess.run(
                     ["mpv", "--fs", f"{link}", f"--title={name.rsplit(' ', 1)[0]}"],
