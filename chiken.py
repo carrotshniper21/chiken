@@ -102,8 +102,8 @@ class MovieClient:
     def update(self, args):
         if args.update:
             update = subprocess.run(['git', 'stash'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-             = subprocess.run(["git", "pull", "https://github.com/carrotshniper21/chiken"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)      
-        
+            update_run = subprocess.run(["git", "pull", "https://github.com/carrotshniper21/chiken"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     def load_config(self):
         config_path = os.path.join(os.path.expanduser('~'), '.config', 'chiken/' 'config.txt')
         with open(config_path) as config_file:
@@ -207,6 +207,11 @@ class MovieClient:
             if args.sources:
                  print(colorcodes["Yellow"] + "[*] SOURCES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{episode['title']}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(selected_episode) + colorcodes["Reset"])
                  print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + colorcodes["Bold"] +  f"{episode['title']}:\n" + colorcodes["Reset"] +  colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
+
+            if args.update:
+                self.update(args)
+                print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Update Successful" + colorcodes["Reset"])
+
             sources = show_episodes["sources"]
             qualities = [source["quality"] for source in sources]
             best_quality = choose_best_quality(qualities)
@@ -230,7 +235,7 @@ class MovieClient:
                      f.write(download_arg.text)
                      print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + f"File Written: {episode['title']}" + colorcodes["Reset"])
                      sys.exit()
-            print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + f"Now Playing '{episode['title']}'")
+            print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + colorcodes["Bold"] + f"Now Playing '{episode['title']}'" + colorcodes["Reset"])
             print("[+] Press Ctrl+C to exit the program")
             tv_result = subprocess.run(
                 ["mpv", f"{best_link}", f"--title={episode['title']}", f"{subtitle_load}"],
@@ -256,14 +261,14 @@ def main():
                 print(colorcodes["Yellow"] + "[*] SUBTITLES " + colorcodes["Reset"] + colorcodes["Bold"] + f"{name}:\n" + colorcodes["Reset"] + colorcodes["Blue"] + "\n".join(subtitles) + colorcodes["Reset"])
             if args.update:
                 movie_client.update(args)
-                print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + "Update Successful\n")
+                print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Update Successful" + colorcodes["Reset"])
             qualities = [p["quality"] for p in result["sources"]]
             best_quality = choose_best_quality(qualities)
 
         for link in media_link:
             if best_quality in link:
                 link = link.split()[0]
-                print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + f"Now Playing '{name.rsplit(' ', 1)[0]}'")
+                print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + colorcodes["Bold"] + f"Now Playing '{name.rsplit(' ', 1)[0]}'" + colorcodes["Reset"])
                 print("[+] Press Ctrl+C to exit the program")
                 result = subprocess.run(
                     ["mpv", "--fs", f"{link}", f"--title={name.rsplit(' ', 1)[0]}"],
@@ -276,4 +281,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
