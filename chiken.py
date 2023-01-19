@@ -97,7 +97,7 @@ class MovieClient:
 
         return id, name
 
-    def search_tv_shows(self, id, args):
+    def search_tv_shows(self, id, args, subs_language):
         t = requests.get(f"{self.BASE_URL}info?id={id}")
         data = json.loads(t.text)
         episodes = data["episodes"]
@@ -140,7 +140,6 @@ class MovieClient:
             )
             show_episodes = json.loads(h.text)
             subtitles = [f'{z["url"]} {z["lang"]}' for z in show_episodes["subtitles"]]
-            subtitle_data = [f'{z["url"]}' for z in show_episodes["subtitles"]]
 
             selected_episode = [
                 f'{k["url"]} {k["quality"]}' for k in show_episodes["sources"]
@@ -156,9 +155,6 @@ class MovieClient:
             sources = show_episodes["sources"]
             qualities = [source["quality"] for source in sources]
             best_quality = choose_best_quality(qualities)
-
-            for subtitle_file in subtitle_data:
-                subtitle_load = ' --sub-file=' + subtitle_file
 
             for source in sources:
                 if source["quality"] == best_quality:
@@ -176,10 +172,15 @@ class MovieClient:
                      f.write(download_arg.text)
                      print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + f"File Written: {episode['title']}" + colorcodes["Reset"])
                      sys.exit()
+
+            language = self.get_subtitle_lang(subs_language, subtitles)
+            language_link = language.split()[0]
+
+            print(colorcodes["Yellow"] + "[*] INFO "+ colorcodes["Reset"] + colorcodes["Bold"] + f"Subtitle link fetched: {language_link} " + colorcodes["Reset"])
             print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + colorcodes["Bold"] + f"Now Playing '{episode['title']}'" + colorcodes["Reset"])
             print("[+] Press Ctrl+C to exit the program")
             tv_result = subprocess.run(
-                ["mpv", f"{best_link}", f"--title={episode['title']}", f"{subtitle_load}"],
+                ["mpv", f"{best_link}", f"--title={episode['title']}", f"--sub-file={language_link}"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -192,7 +193,7 @@ def main():
         player, subs_language, video_quality, preferred_server = movie_client.load_config()
         id, name = movie_client.search_movies(args)
         if id.startswith("tv/"):
-            movie_client.search_tv_shows(id, args)
+            movie_client.search_tv_shows(id, args, subs_language)
         elif id.startswith("movie/"):
             result = movie_client.watch_movie(id, name, args, preferred_server)
             media_link = [f'{p["url"]} {p["quality"]}' for p in result["sources"]]
@@ -205,19 +206,19 @@ def main():
                 print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Update Successful" + colorcodes["Reset"])
             qualities = [p["quality"] for p in result["sources"]]
             best_quality = choose_best_quality(qualities)
-            language = movie_client.get_subtitle_lang(subs_language, subtitles)
         for link in media_link:
             if best_quality in link:
                 link = link.split()[0]
+                language = movie_client.get_subtitle_lang(subs_language, subtitles)
                 language_link = language.split()[0]
                 print(colorcodes["Yellow"] + "[*] INFO "+ colorcodes["Reset"] + colorcodes["Bold"] + f"Subtitle link fetched: {language_link} " + colorcodes["Reset"])
                 print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + colorcodes["Bold"] + f"Now Playing '{name.rsplit(' ', 1)[0]}'" + colorcodes["Reset"])
                 print("[+] Press Ctrl+C to exit the program")
-                print(subprocess.run(
-                    ["mpv", "--fs", f"{link}", f"--title={name.rsplit(' ', 1)[0]}", f"--sub-file={language_link}"],
+                subprocess.run(
+                    ["mpv", f"{link}", f"--title={name.rsplit(' ', 1)[0]}", f"--sub-file={language_link}"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                ))
+                )
     except KeyboardInterrupt:
         sys.exit()
 
