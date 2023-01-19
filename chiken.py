@@ -1,75 +1,11 @@
 #!/usr/bin/env python3
 import subprocess
-import argparse
 import json
 import sys
 import os
+from utils.arg_parser import parse_args
 from pyfzf.pyfzf import FzfPrompt
 import requests
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Watch movies or anime from api.consumet.org"
-    )
-
-    parser.add_argument(
-        "-q",
-        "--quality",
-        action="store",
-        required=False,
-        default="auto",
-    )
-    parser.add_argument(
-        "-H",
-        "--history",
-        required=False,
-        dest="history",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-d",
-        "--download",
-        required=False,
-        dest="download",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-u",
-        "--update",
-        required=False,
-        dest="update",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-C",
-        "--continue",
-        required=False,
-        dest="continue",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        required=False,
-        dest="config",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-v",
-        "--vlc",
-        required=False,
-        dest="vlc",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-s",
-        "--sources",
-        required=False,
-        dest="sources",
-        action="store_true",
-    )
-
-    return parser.parse_args()
 
 colorcodes = {
     "Black": "\033[30m",
@@ -111,9 +47,14 @@ class MovieClient:
             lines = config_data.split('\n')
             preferred_server = next(line.split('=')[1] for line in lines if line.startswith('preferred_server='))
             video_quality = next(line.split('=')[1] for line in lines if line.startswith('video_quality='))
-            subs_langauge = next(line.split('=')[1] for line in lines if line.startswith('subs_language='))
+            subs_language = next(line.split('=')[1] for line in lines if line.startswith('subs_language='))
             player = next(line.split('=')[1] for line in lines if line.startswith('player='))
-            return player, subs_langauge, video_quality, preferred_server
+            return player, subs_language, video_quality, preferred_server
+
+    def get_subtitle_lang(self, subs_language, subtitles):
+        for language in subtitles:
+            if subs_language in language:
+                return language
 
     def get_json_data(self, name):
         r = requests.get(f"{self.BASE_URL}{name}")
@@ -248,7 +189,7 @@ def main():
     try:
         args = parse_args()
         movie_client = MovieClient()
-        player, subs_langauge, video_quality, preferred_server = movie_client.load_config()
+        player, subs_language, video_quality, preferred_server = movie_client.load_config()
         id, name = movie_client.search_movies(args)
         if id.startswith("tv/"):
             movie_client.search_tv_shows(id, args)
@@ -264,17 +205,19 @@ def main():
                 print(colorcodes["Yellow"] + "[*] INFO: " + colorcodes["Reset"] + colorcodes["Bold"] + "Update Successful" + colorcodes["Reset"])
             qualities = [p["quality"] for p in result["sources"]]
             best_quality = choose_best_quality(qualities)
-
+            language = movie_client.get_subtitle_lang(subs_language, subtitles)
         for link in media_link:
             if best_quality in link:
                 link = link.split()[0]
+                language_link = language.split()[0]
+                print(colorcodes["Yellow"] + "[*] INFO "+ colorcodes["Reset"] + colorcodes["Bold"] + f"Subtitle link fetched: {language_link} " + colorcodes["Reset"])
                 print(colorcodes["Green"] + "[*] SUCCESS: " + colorcodes["Reset"] + colorcodes["Bold"] + f"Now Playing '{name.rsplit(' ', 1)[0]}'" + colorcodes["Reset"])
                 print("[+] Press Ctrl+C to exit the program")
-                result = subprocess.run(
-                    ["mpv", "--fs", f"{link}", f"--title={name.rsplit(' ', 1)[0]}"],
+                print(subprocess.run(
+                    ["mpv", "--fs", f"{link}", f"--title={name.rsplit(' ', 1)[0]}", f"--sub-file={language_link}"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                )
+                ))
     except KeyboardInterrupt:
         sys.exit()
 
